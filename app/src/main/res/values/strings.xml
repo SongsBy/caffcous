@@ -1,7 +1,7 @@
 <resources>
-<<<<<<< HEAD
-    <string name="app_name">Caffocus</string>
-=======
-    <string name="app_name">caffocus</string>
->>>>>>> c91dfc0 (demo)
+
+    <string name="app_name" translatable="false">Caffocus</string>
+
+
+
 </resources>

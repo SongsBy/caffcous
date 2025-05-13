@@ -12,34 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Caffocus"
         tools:targetApi="31">
-        <activity
-            android:name=".resttimesound"
-            android:exported="false" />
-        <activity
-            android:name=".focussetting"
-            android:exported="false" />
-        <activity
-            android:name=".whitenoisesetting"
-            android:exported="false" />
-        <activity
-            android:name=".useractivity"
-            android:exported="false" />
-        <activity
-            android:name=".calendaractivity"
-            android:exported="false" />
-        <activity
-            android:name=".timer"
-            android:exported="true" />
-        <activity
-            android:name=".MainActivity2"
-            android:exported="false" />
-        <activity
->>>>>>> c91dfc0 (demo)
-            android:name=".MainActivity"
-            android:exported="true">
+
+        <activity android:name=".resttimesound" android:exported="false" />
+        <activity android:name=".focussetting" android:exported="false" />
+        <activity android:name=".whitenoisesetting" android:exported="false" />
+        <activity android:name=".useractivity" android:exported="false" />
+        <activity android:name=".calendaractivity" android:exported="false" />
+        <activity android:name=".timer" android:exported="true" />
+        <activity android:name=".MainActivity2" android:exported="false" />
+        <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

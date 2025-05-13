@@ -19,3 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
+include(":appgo")
+project(":appgo").projectDir = File(rootDir, "app/")
