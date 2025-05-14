@@ -1,7 +1,9 @@
 package com.example.caffocus
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -17,6 +19,8 @@ import com.example.caffocus.databinding.ActivityMainBinding
 import com.example.caffocus.databinding.ActivityTimerBinding
 import com.example.caffocus.databinding.ActivityUseractivityBinding
 import com.example.caffocus.databinding.ItemTodoBinding
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -108,6 +112,13 @@ class calendaractivity : AppCompatActivity() {
     private lateinit var todoAdapter: TodoAdapter
     private val todoItems = mutableListOf<TodoItem>()
     private var selectedDate: Date = Calendar.getInstance().time
+    private lateinit var sharedPreferences: SharedPreferences
+    private val gson = Gson()
+    
+    companion object {
+        const val PREF_NAME = "TodoPreferences"
+        const val TODO_ITEMS_KEY = "todo_items"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,6 +126,10 @@ class calendaractivity : AppCompatActivity() {
 
         binding = ActivityCalendaractivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        sharedPreferences = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+
+        loadTodoItems()
 
         binding.timer2.setOnClickListener {
             intent = Intent(this, timer::class.java)
@@ -165,6 +180,8 @@ class calendaractivity : AppCompatActivity() {
         todoAdapter = TodoAdapter(todoItems)
         binding.todoRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.todoRecyclerView.adapter = todoAdapter
+
+        todoAdapter.filterByDate(selectedDate)
     }
 
     private fun setupListeners() {
@@ -183,6 +200,8 @@ class calendaractivity : AppCompatActivity() {
                 )
                 todoAdapter.addTodo(todoItem)
 
+                saveTodoItems()
+
                 binding.todoInput.text.clear()
                 binding.todoInputLayout.visibility = View.GONE
 
@@ -193,6 +212,23 @@ class calendaractivity : AppCompatActivity() {
         binding.cancelButton.setOnClickListener {
             binding.todoInput.text.clear()
             binding.todoInputLayout.visibility = View.GONE
+        }
+    }
+
+    private fun saveTodoItems() {
+        val editor = sharedPreferences.edit()
+        val json = gson.toJson(todoItems)
+        editor.putString(TODO_ITEMS_KEY, json)
+        editor.apply()
+    }
+
+    private fun loadTodoItems() {
+        val json = sharedPreferences.getString(TODO_ITEMS_KEY, null)
+        if (json != null) {
+            val type = object : TypeToken<List<TodoItem>>() {}.type
+            val loadedItems: List<TodoItem> = gson.fromJson(json, type)
+            todoItems.clear()
+            todoItems.addAll(loadedItems)
         }
     }
 }
