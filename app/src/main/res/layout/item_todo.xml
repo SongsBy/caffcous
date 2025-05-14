@@ -7,16 +7,26 @@
     app:cardCornerRadius="8dp"
     app:cardElevation="2dp">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:padding="12dp">
+
+        <ImageButton
+            android:id="@+id/deleteTodoButton"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="삭제"
+            android:src="@android:drawable/ic_menu_close_clear_cancel" />
 
         <TextView
             android:id="@+id/todoContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_toStartOf="@id/deleteTodoButton"
             android:textSize="16sp"
             android:fontFamily="@font/gol" />
 
@@ -24,11 +34,12 @@
             android:id="@+id/todoTimestamp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_below="@id/todoContent"
             android:layout_marginTop="4dp"
             android:gravity="end"
             android:textSize="12sp"
             android:textColor="#757575"
             android:fontFamily="@font/gol" />
-    </LinearLayout>
+    </RelativeLayout>
 
 </androidx.cardview.widget.CardView>

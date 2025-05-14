@@ -64,6 +64,19 @@ class TodoAdapter(private val allTodoItems: MutableList<TodoItem>) :
 
         val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
         holder.binding.todoTimestamp.text = dateFormat.format(item.timestamp)
+
+        holder.binding.deleteTodoButton.setOnClickListener {
+            val displayedPosition = position
+            val actualItem = displayedTodoItems[displayedPosition]
+            
+
+            allTodoItems.remove(actualItem)
+            displayedTodoItems.removeAt(displayedPosition)
+            
+            notifyItemRemoved(displayedPosition)
+
+            onItemRemovedListener?.invoke()
+        }
     }
 
     override fun getItemCount() = displayedTodoItems.size
@@ -104,6 +117,12 @@ class TodoAdapter(private val allTodoItems: MutableList<TodoItem>) :
         if (startOfDay == null || startOfNextDay == null) return true
 
         return !todo.date.before(startOfDay) && todo.date.before(startOfNextDay)
+    }
+
+    private var onItemRemovedListener: (() -> Unit)? = null
+    
+    fun setOnItemRemovedListener(listener: () -> Unit) {
+        onItemRemovedListener = listener
     }
 }
 
@@ -180,6 +199,10 @@ class calendaractivity : AppCompatActivity() {
         todoAdapter = TodoAdapter(todoItems)
         binding.todoRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.todoRecyclerView.adapter = todoAdapter
+
+        todoAdapter.setOnItemRemovedListener {
+            saveTodoItems()
+        }
 
         todoAdapter.filterByDate(selectedDate)
     }
