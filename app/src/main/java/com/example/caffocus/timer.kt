@@ -6,34 +6,30 @@ import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.view.Menu
-import android.view.MenuItem
+import android.os.Handler
+import android.os.Looper
+import android.view.View
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ShareCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import kotlin.jvm.java
 
 class timer : AppCompatActivity() {
 
-    private var mediaPlayer: MediaPlayer? =null
-
-
+    private var mediaPlayer: MediaPlayer? = null
     private lateinit var timerText: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var startPauseButton: ImageButton
     private lateinit var quoteText: TextView
+    private lateinit var resetButton: ImageButton
+    private lateinit var stopButton: ImageButton
 
     private var isRunning = false
     private var isWorkTime = true
     private var timeLeftInMillis: Long = 25 * 60 * 1000
     private var totalTimeInMillis: Long = 25 * 60 * 1000
     private var countDownTimer: CountDownTimer? = null
-    private var quoteTimer: CountDownTimer? = null
 
     private lateinit var prefs: SharedPreferences
 
@@ -42,9 +38,19 @@ class timer : AppCompatActivity() {
         "포기하지 마라. 큰일도 작은 행동에서 시작된다.",
         "공부는 미래의 너에게 보내는 선물이다.",
         "오늘 걷지 않으면 내일은 뛰어야 한다.",
-        "성공은 작은 노력이 반복된 결과다."
+        "성공은 작은 노력이 반복된 결과다.",
+
     )
 
+    private val quoteHandler = Handler(Looper.getMainLooper())
+    private val quoteRunnable = object : Runnable {
+        override fun run() {
+            if (prefs.getBoolean("show_quote", true)) {
+                quoteText.text = quotes.random()
+                quoteHandler.postDelayed(this, 5 * 60 * 1000L)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,56 +59,47 @@ class timer : AppCompatActivity() {
 
         prefs = getSharedPreferences("settings", MODE_PRIVATE)
 
-        val focusMinutes = prefs.getInt("focus_minutes", 25)
-        val restMinutes = prefs.getInt("rest_minutes", 5)
-
-        totalTimeInMillis = focusMinutes * 60 * 1000L
-        timeLeftInMillis = totalTimeInMillis
-
-
-
-        val volume = getSharedPreferences("settings", MODE_PRIVATE)
-            .getInt("volume", 50) / 100f
-        mediaPlayer?.setVolume(volume, volume)
-
+        resetButton = findViewById(R.id.resetButton)
+        stopButton = findViewById(R.id.stopButton)
         timerText = findViewById(R.id.timerText)
         progressBar = findViewById(R.id.progressBar)
         startPauseButton = findViewById(R.id.startPauseButton)
         quoteText = findViewById(R.id.quoteText)
 
-        var calendarbtn  = findViewById<ImageButton>(R.id.calendar)
-        var userbtn  = findViewById<ImageButton>(R.id.user)
-
-        calendarbtn.setOnClickListener {
-            intent = Intent(this , calendaractivity::class.java)
-            startActivity(intent)
+        findViewById<ImageButton>(R.id.calendar).setOnClickListener {
+            startActivity(Intent(this, calendaractivity::class.java))
         }
 
-        userbtn.setOnClickListener {
-            intent = Intent(this, useractivity::class.java)
-            startActivity(intent)
-
+        findViewById<ImageButton>(R.id.user).setOnClickListener {
+            startActivity(Intent(this, useractivity::class.java))
         }
-
-        updateQuoteVisibility()
-        updateTimerText()
-        updateProgress()
 
         startPauseButton.setOnClickListener {
             if (isRunning) pauseTimer() else startTimer()
         }
 
-        startQuoteTimer()
+        resetButton.setOnClickListener {
+            resetTimer()
+        }
 
-    }
+        stopButton.setOnClickListener {
+            stopTimerAndShowEndDialog()
+        }
 
-
-    override fun onResume() {
-        super.onResume()
+        quoteHandler.postDelayed(quoteRunnable, 0)
         updateQuoteVisibility()
+        updateTimerText()
+        updateProgress()
+
+        // 초기 버튼 상태
+        startPauseButton.setImageResource(R.drawable.play)
+        resetButton.visibility = View.GONE
+        stopButton.visibility = View.GONE
     }
 
     private fun startTimer() {
+        countDownTimer?.cancel()
+
         countDownTimer = object : CountDownTimer(timeLeftInMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 timeLeftInMillis = millisUntilFinished
@@ -115,21 +112,11 @@ class timer : AppCompatActivity() {
                 startPauseButton.setImageResource(R.drawable.play)
                 mediaPlayer?.pause()
 
-                val title = if (isWorkTime) "25분 종료" else "휴식 끝"
-                val message = if (isWorkTime) "5분 휴식을 시작할까요?" else "다시 집중을 시작할까요?"
-                showAlert(title, message) {
-                    isWorkTime = !isWorkTime
-                    val focusMinutes = prefs.getInt("focus_minutes", 25)
-                    val restMinutes = prefs.getInt("rest_minutes", 5)
-                    totalTimeInMillis = if (isWorkTime) focusMinutes * 60 * 1000L else restMinutes * 60 * 1000L
-                    timeLeftInMillis = totalTimeInMillis
-                    updateTimerText()
-                    updateProgress()
-                    startTimer()
+                showAlert("시간 종료", "다시 시작할까요?") {
+                    resetTimer()
                 }
             }
         }.start()
-
 
         val selectedMusic = if (isWorkTime) {
             prefs.getString("music", "whitenoise1")
@@ -146,17 +133,61 @@ class timer : AppCompatActivity() {
             start()
         }
 
-
         isRunning = true
         startPauseButton.setImageResource(R.drawable.pause)
+        resetButton.visibility = View.GONE
+        stopButton.visibility = View.GONE
     }
 
     private fun pauseTimer() {
         countDownTimer?.cancel()
-        isRunning = false
-        isRunning = false
         mediaPlayer?.pause()
+        isRunning = false
+
+        prefs.edit()
+            .putBoolean("isRunning", false)
+            .putLong("time_left", timeLeftInMillis)
+            .apply()
+
         startPauseButton.setImageResource(R.drawable.play)
+        resetButton.visibility = View.VISIBLE
+        stopButton.visibility = View.VISIBLE
+    }
+
+    private fun resetTimer() {
+        countDownTimer?.cancel()
+        mediaPlayer?.pause()
+        mediaPlayer?.seekTo(0)
+        isRunning = false
+        isWorkTime = true
+        totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
+        timeLeftInMillis = totalTimeInMillis
+
+        updateTimerText()
+        updateProgress()
+
+        startPauseButton.setImageResource(R.drawable.play)
+        resetButton.visibility = View.GONE
+        stopButton.visibility = View.GONE
+    }
+
+    private fun stopTimerAndShowEndDialog() {
+        countDownTimer?.cancel()
+        mediaPlayer?.pause()
+        isRunning = false
+        isWorkTime = true
+        totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
+        timeLeftInMillis = totalTimeInMillis
+
+        updateTimerText()
+        updateProgress()
+
+        startPauseButton.setImageResource(R.drawable.play)
+        resetButton.visibility = View.GONE
+        stopButton.visibility = View.GONE
+
+        showAlert("타이머 종료", "홈으로 돌아갑니다.") {
+        }
     }
 
     private fun updateTimerText() {
@@ -174,24 +205,61 @@ class timer : AppCompatActivity() {
     private fun updateQuoteVisibility() {
         val showQuote = prefs.getBoolean("show_quote", true)
         if (showQuote) {
-            quoteText.text = quotes.random()
+            val randomQuote = quotes.random()
+            quoteText.text = randomQuote
             quoteText.visibility = TextView.VISIBLE
+            quoteHandler.removeCallbacks(quoteRunnable)
+            quoteHandler.postDelayed(quoteRunnable, 5 * 60 * 1000L) // 5분 후 갱신
         } else {
             quoteText.visibility = TextView.GONE
+            quoteHandler.removeCallbacks(quoteRunnable)
         }
     }
 
-    private fun startQuoteTimer() {
-        quoteTimer?.cancel()
-        if (!prefs.getBoolean("show_quote", true)) return
+    override fun onPause() {
+        super.onPause()
+        if (isRunning) {
+            prefs.edit()
+                .putLong("resume_time", System.currentTimeMillis())
+                .putLong("time_left", timeLeftInMillis)
+                .putBoolean("isRunning", true)
+                .putBoolean("isWorkTime", isWorkTime)
+                .apply()
+        }
+    }
 
-        quoteTimer = object : CountDownTimer(300000, 300000) {
-            override fun onTick(millisUntilFinished: Long) {}
-            override fun onFinish() {
-                quoteText.text = quotes.random()
-                startQuoteTimer()
-            }
-        }.start()
+    override fun onResume() {
+        super.onResume()
+        val wasRunning = prefs.getBoolean("isRunning", false)
+        val resumeTime = prefs.getLong("resume_time", System.currentTimeMillis())
+        val previousLeft = prefs.getLong("time_left", totalTimeInMillis)
+        val passed = System.currentTimeMillis() - resumeTime
+        timeLeftInMillis = previousLeft - passed
+        if (timeLeftInMillis < 0L) timeLeftInMillis = 0L
+
+        isRunning = wasRunning
+        isWorkTime = prefs.getBoolean("isWorkTime", true)
+
+        if (wasRunning) {
+            startTimer()
+        } else {
+            updateTimerText()
+            updateProgress()
+            // paused 상태였던 경우 UI 유지
+            startPauseButton.setImageResource(R.drawable.play)
+            resetButton.visibility = View.VISIBLE
+            stopButton.visibility = View.VISIBLE
+        }
+
+        updateQuoteVisibility()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        countDownTimer?.cancel()
+        mediaPlayer?.release()
+        mediaPlayer = null
+        quoteHandler.removeCallbacks(quoteRunnable)
     }
 
     private fun showAlert(title: String, message: String, onConfirm: () -> Unit) {
@@ -202,17 +270,4 @@ class timer : AppCompatActivity() {
             .setPositiveButton("확인") { _, _ -> onConfirm() }
             .show()
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        countDownTimer?.cancel()
-        quoteTimer?.cancel()
-        mediaPlayer?.release()
-        mediaPlayer = null
-    }
-
-
-
 }
-
-
