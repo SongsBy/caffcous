@@ -38,8 +38,7 @@ class timer : AppCompatActivity() {
         "포기하지 마라. 큰일도 작은 행동에서 시작된다.",
         "공부는 미래의 너에게 보내는 선물이다.",
         "오늘 걷지 않으면 내일은 뛰어야 한다.",
-        "성공은 작은 노력이 반복된 결과다.",
-
+        "성공은 작은 노력이 반복된 결과다."
     )
 
     private val quoteHandler = Handler(Looper.getMainLooper())
@@ -91,7 +90,6 @@ class timer : AppCompatActivity() {
         updateTimerText()
         updateProgress()
 
-        // 초기 버튼 상태
         startPauseButton.setImageResource(R.drawable.play)
         resetButton.visibility = View.GONE
         stopButton.visibility = View.GONE
@@ -186,8 +184,7 @@ class timer : AppCompatActivity() {
         resetButton.visibility = View.GONE
         stopButton.visibility = View.GONE
 
-        showAlert("타이머 종료", "홈으로 돌아갑니다.") {
-        }
+        showAlert("타이머 종료", "홈으로 돌아갑니다.") {}
     }
 
     private fun updateTimerText() {
@@ -209,7 +206,7 @@ class timer : AppCompatActivity() {
             quoteText.text = randomQuote
             quoteText.visibility = TextView.VISIBLE
             quoteHandler.removeCallbacks(quoteRunnable)
-            quoteHandler.postDelayed(quoteRunnable, 5 * 60 * 1000L) // 5분 후 갱신
+            quoteHandler.postDelayed(quoteRunnable, 5 * 60 * 1000L)
         } else {
             quoteText.visibility = TextView.GONE
             quoteHandler.removeCallbacks(quoteRunnable)
@@ -245,7 +242,6 @@ class timer : AppCompatActivity() {
         } else {
             updateTimerText()
             updateProgress()
-            // paused 상태였던 경우 UI 유지
             startPauseButton.setImageResource(R.drawable.play)
             resetButton.visibility = View.VISIBLE
             stopButton.visibility = View.VISIBLE
