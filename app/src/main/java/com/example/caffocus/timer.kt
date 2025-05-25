@@ -107,11 +107,36 @@ class timer : AppCompatActivity() {
 
             override fun onFinish() {
                 isRunning = false
-                startPauseButton.setImageResource(R.drawable.play)
                 mediaPlayer?.pause()
 
-                showAlert("시간 종료", "다시 시작할까요?") {
-                    resetTimer()
+                if (isWorkTime) {
+                    isWorkTime = false
+                    totalTimeInMillis = prefs.getInt("rest_minutes", 5) * 60 * 1000L
+                    timeLeftInMillis = totalTimeInMillis
+
+                    prefs.edit()
+                        .putBoolean("isWorkTime", isWorkTime)
+                        .putLong("time_left", timeLeftInMillis)
+                        .putBoolean("isRunning", false)
+                        .apply()
+
+                    showAlert("집중 시간 종료", "이제 휴식 시간입니다.") {
+                        startTimer()
+                    }
+                } else {
+                    isWorkTime = true
+                    totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
+                    timeLeftInMillis = totalTimeInMillis
+
+                    prefs.edit()
+                        .putBoolean("isWorkTime", isWorkTime)
+                        .putLong("time_left", timeLeftInMillis)
+                        .putBoolean("isRunning", false)
+                        .apply()
+
+                    showAlert("휴식 종료", "다시 집중할까요?") {
+                        startTimer()
+                    }
                 }
             }
         }.start()
@@ -154,12 +179,24 @@ class timer : AppCompatActivity() {
 
     private fun resetTimer() {
         countDownTimer?.cancel()
-        mediaPlayer?.pause()
-        mediaPlayer?.seekTo(0)
+
+
+        mediaPlayer?.let {
+            if (it.isPlaying) it.stop()
+            it.release()
+            mediaPlayer = null
+        }
+
         isRunning = false
         isWorkTime = true
+
+
         totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
         timeLeftInMillis = totalTimeInMillis
+
+
+        progressBar.max = (totalTimeInMillis / 1000).toInt()
+        progressBar.progress = 0
 
         updateTimerText()
         updateProgress()
@@ -167,16 +204,38 @@ class timer : AppCompatActivity() {
         startPauseButton.setImageResource(R.drawable.play)
         resetButton.visibility = View.GONE
         stopButton.visibility = View.GONE
+
+        prefs.edit()
+            .putLong("time_left", timeLeftInMillis)
+            .putBoolean("isRunning", false)
+            .putBoolean("isWorkTime", isWorkTime)
+            .remove("resume_time")
+            .apply()
     }
 
     private fun stopTimerAndShowEndDialog() {
         countDownTimer?.cancel()
-        mediaPlayer?.pause()
+
+        mediaPlayer?.let {
+            if (it.isPlaying) {
+                it.stop()
+            }
+            it.release()
+            mediaPlayer = null
+        }
+
         isRunning = false
         isWorkTime = true
         totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
         timeLeftInMillis = totalTimeInMillis
 
+
+        prefs.edit()
+            .putLong("time_left", timeLeftInMillis)
+            .putBoolean("isRunning", false)
+            .putBoolean("isWorkTime", isWorkTime)
+            .remove("resume_time")
+            .apply()
         updateTimerText()
         updateProgress()
 
@@ -184,9 +243,10 @@ class timer : AppCompatActivity() {
         resetButton.visibility = View.GONE
         stopButton.visibility = View.GONE
 
-        showAlert("타이머 종료", "홈으로 돌아갑니다.") {}
-    }
+        showAlert("타이머를 종료하시겠습니까? ", "정보는 저장되지 않습니다.") {
 
+        }
+    }
     private fun updateTimerText() {
         val minutes = (timeLeftInMillis / 1000) / 60
         val seconds = (timeLeftInMillis / 1000) % 60
@@ -194,9 +254,15 @@ class timer : AppCompatActivity() {
     }
 
     private fun updateProgress() {
+
+        totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
+
+
+        if (timeLeftInMillis < 0L) timeLeftInMillis = 0L
+
         val progress = ((totalTimeInMillis - timeLeftInMillis) / 1000).toInt()
         progressBar.max = (totalTimeInMillis / 1000).toInt()
-        progressBar.progress = progress
+        progressBar.progress = progress.coerceAtMost(progressBar.max)  // max 초과 방지
     }
 
     private fun updateQuoteVisibility() {
@@ -222,17 +288,29 @@ class timer : AppCompatActivity() {
                 .putBoolean("isRunning", true)
                 .putBoolean("isWorkTime", isWorkTime)
                 .apply()
+        } else {
+            prefs.edit().remove("resume_time").apply()
         }
+
+        mediaPlayer?.pause()
     }
 
     override fun onResume() {
         super.onResume()
+
+
+        totalTimeInMillis = prefs.getInt("focus_minutes", 25) * 60 * 1000L
+
         val wasRunning = prefs.getBoolean("isRunning", false)
-        val resumeTime = prefs.getLong("resume_time", System.currentTimeMillis())
-        val previousLeft = prefs.getLong("time_left", totalTimeInMillis)
-        val passed = System.currentTimeMillis() - resumeTime
-        timeLeftInMillis = previousLeft - passed
-        if (timeLeftInMillis < 0L) timeLeftInMillis = 0L
+        if (wasRunning && prefs.contains("resume_time")) {
+            val resumeTime = prefs.getLong("resume_time", System.currentTimeMillis())
+            val previousLeft = prefs.getLong("time_left", totalTimeInMillis)
+            val passed = System.currentTimeMillis() - resumeTime
+            timeLeftInMillis = previousLeft - passed
+            if (timeLeftInMillis < 0L) timeLeftInMillis = 0L
+        } else {
+            timeLeftInMillis = prefs.getLong("time_left", totalTimeInMillis)
+        }
 
         isRunning = wasRunning
         isWorkTime = prefs.getBoolean("isWorkTime", true)
@@ -249,7 +327,6 @@ class timer : AppCompatActivity() {
 
         updateQuoteVisibility()
     }
-
     override fun onDestroy() {
         super.onDestroy()
         countDownTimer?.cancel()
